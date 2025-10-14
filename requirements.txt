@@ -1,0 +1,17 @@
+# Inventory Management System - Requirements
+
+# Core dependencies (already in your project)
+python-dotenv
+pydantic
+supabase
+langchain
+langchain-groq
+langchain-core
+langgraph
+
+# New dependencies for Streamlit UI
+streamlit
+pandas
+
+# Optional for better terminal output (if you want to keep the CLI version)
+colorama
