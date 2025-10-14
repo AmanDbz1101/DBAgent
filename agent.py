@@ -109,11 +109,9 @@ def run_qa_agent(state: AgentState) -> AgentState:
     try:
         # Format inventory data as string
         inventory_str = format_inventory_as_string(state["inventory_data"])
-        print(state["message"], inventory_str)
         # Get formatted prompt
         prompt = get_qa_agent_prompt(state["message"], inventory_str)
         
-        print(prompt)
         # Create LLM
         # llm = get_llm(temperature=0.2)  # Slightly higher temperature for more natural responses
         llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.2)
