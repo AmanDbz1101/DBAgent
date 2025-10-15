@@ -13,5 +13,3 @@ langgraph
 streamlit
 pandas
 
-# Optional for better terminal output (if you want to keep the CLI version)
-colorama
