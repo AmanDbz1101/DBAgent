@@ -7,6 +7,7 @@ A sophisticated inventory management system featuring AI agents powered by LangG
 - 🤖 **AI Agent Workflow**: LangGraph-powered multi-agent system with task classification and specialized agents
 - 📦 **Smart Inventory Operations**: Natural language processing for add/update/delete/query operations
 - 💬 **Interactive Chat Interface**: Modern Streamlit web UI with real-time chat functionality
+- 🧠 **Conversational Memory**: Persistent context awareness across chat sessions using LangGraph state history
 - 🗃️ **Robust Database Integration**: Supabase backend with PostgreSQL for reliable data persistence
 - 📊 **Live Dashboard**: Real-time inventory display with statistics and CSV export
 - 🔍 **Advanced Monitoring**: Integrated LangSmith tracing for debugging and performance optimization
@@ -159,6 +160,27 @@ LangSmith was integrated to solve workflow debugging issues and optimize agent p
 - **Prompt Optimization**: Analyze and improve agent prompts based on real usage
 - **Error Analysis**: Detailed logging of failures for continuous improvement
 
+### 🧠 Memory & Persistence System
+
+The system implements sophisticated conversation memory using LangGraph's built-in persistence capabilities, enabling contextual interactions across multiple exchanges.
+
+#### **Memory Architecture**
+- **InMemorySaver Checkpointer**: Maintains conversation state throughout the session
+- **Thread-based Persistence**: Each conversation thread maintains independent state history
+- **State History Tracking**: Automatically captures user messages and agent responses
+- **Contextual Retrieval**: Agents access up to 5 previous interactions for context
+
+#### **Implementation Details**
+```python
+# Workflow compilation with checkpointer
+checkpointer = InMemorySaver()
+workflow = StateGraph.compile(checkpointer=checkpointer)
+
+# Thread-based conversation tracking
+config = {"configurable": {"thread_id": "main"}}
+history = workflow.get_state_history(config, limit=5)
+```
+
 ## 📁 Project Structure
 
 ```
@@ -236,7 +258,17 @@ LangSmith was crucial in solving several development challenges:
 2. **UI Modifications**: Edit `app.py` for interface improvements
 3. **Database Changes**: Update `tools.py` and ensure schema compatibility
 4. **Prompt Engineering**: Modify `prompt.py` templates and validate with LangSmith
-5. **Debugging**: Use LangSmith traces to understand agent behavior and optimize performance
+5. **Memory Enhancement**: Update agent state schemas and context handling for improved persistence
+6. **Debugging**: Use LangSmith traces to understand agent behavior and optimize performance
+
+### Memory System Development
+The conversational memory implementation demonstrates advanced LangGraph patterns:
+
+- **State Schema Design**: `WorkflowState` and `AgentState` include `chat_history` fields
+- **Context Retrieval**: `get_state_history()` with configurable limits for efficient memory usage  
+- **Prompt Integration**: All agent prompts enhanced with contextual chat history formatting
+- **Thread Management**: Persistent conversation threads using configurable thread IDs
+- **Backward Compatibility**: Graceful handling when no chat history is available
 
 ### Monitoring & Analytics
 - Access LangSmith dashboard to view real-time agent performance
@@ -252,10 +284,13 @@ This project is for educational and development purposes.
 
 ## 🔄 Recent Updates
 
-- ✅ Integrated LangSmith for comprehensive workflow monitoring and debugging
-- ✅ Implemented multi-agent LangGraph architecture for robust task handling  
-- ✅ Enhanced Streamlit UI with real-time chat and inventory dashboard
-- ✅ Added sophisticated error handling and user feedback systems
-- ✅ Optimized prompts through iterative testing with LangSmith analytics
+- ✅ **Conversational Memory Implementation**: Added persistent context awareness using LangGraph's `get_state_history()`
+- ✅ **Enhanced Agent Context**: All agents now receive and process up to 5 previous chat interactions
+- ✅ **Natural Reference Resolution**: Agents understand ambiguous references from conversation history
+- ✅ **Integrated LangSmith**: Comprehensive workflow monitoring and debugging capabilities
+- ✅ **Multi-agent Architecture**: LangGraph-powered robust task handling with specialized agents
+- ✅ **Real-time Chat Interface**: Enhanced Streamlit UI with live inventory dashboard
+- ✅ **Advanced Error Handling**: Sophisticated error management and user feedback systems
+- ✅ **Prompt Optimization**: Iterative improvements through LangSmith analytics
 
-**Note**: LangSmith integration was particularly valuable for identifying and resolving agent classification issues, optimizing prompt effectiveness, and ensuring reliable workflow execution.
+**Note**: The memory persistence implementation enables truly conversational interactions, allowing users to have natural follow-up conversations without repeating context. LangSmith integration was crucial for debugging the agent workflows and optimizing the contextual prompt engineering.
