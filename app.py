@@ -45,6 +45,34 @@ def initialize_session_state():
             handle_error_fn=handle_error
         )
 
+def get_chat_history(limit: int = 5) -> List[Dict[str, str]]:
+    """Get the last few chat interactions for context."""
+    try:
+        if "workflow" not in st.session_state:
+            return []
+        
+        config = {"configurable": {"thread_id": "main"}}
+        # Get state history from the workflow
+        history = st.session_state.workflow.get_state_history(config, limit=limit)
+        
+        chat_history = []
+        for state_snapshot in history:
+            if state_snapshot.values and "message" in state_snapshot.values:
+                user_message = state_snapshot.values["message"]
+                response = state_snapshot.values.get("final_response") or state_snapshot.values.get("response", "")
+                
+                if user_message and response:
+                    chat_history.append({
+                        "user": user_message,
+                        "assistant": response
+                    })
+        
+        # Return in chronological order (oldest first)
+        return list(reversed(chat_history))
+    except Exception as e:
+        # If there's an error getting history, return empty list
+        return []
+
 def get_inventory_dataframe():
     """Get inventory data as a pandas DataFrame."""
     try:
@@ -66,12 +94,18 @@ def get_inventory_dataframe():
 def process_user_message(user_input: str) -> Dict[str, Any]:
     """Process user message through the workflow and return the result."""
     try:
+        # Get chat history for context
+        chat_history = get_chat_history(limit=5)
+        
         # Initialize agent state
         state = initialize_agent_state(user_input)
+        # Add chat history to state
+        state["chat_history"] = chat_history
         
         # Run the workflow
-        result = st.session_state.workflow.invoke(state)
-        
+        config = {"configurable": {"thread_id": "main"}}
+        result = st.session_state.workflow.invoke(state, config=config)
+
         return result
     except Exception as e:
         return {

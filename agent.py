@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
 from langchain_groq import ChatGroq
-from langchain.schema import HumanMessage
 from langchain_core.output_parsers import StrOutputParser
 
 from prompt import (
@@ -41,6 +40,7 @@ class AgentState(TypedDict):
     """The overall state of the agent workflow."""
     message: str
     inventory_data: List[Dict[str, Any]]
+    chat_history: Optional[List[Dict[str, str]]]
     task: Optional[str]
     task_classifier: Optional[TaskClassifier]
     upsert_data: Optional[UpsertState]
@@ -74,6 +74,7 @@ def initialize_agent_state(message: str) -> AgentState:
     return AgentState(
         message=message,
         inventory_data=inventory_data,
+        chat_history=None,  # Will be set by caller
         task=None,
         task_classifier=None,
         upsert_data=None,
@@ -109,8 +110,10 @@ def run_qa_agent(state: AgentState) -> AgentState:
     try:
         # Format inventory data as string
         inventory_str = format_inventory_as_string(state["inventory_data"])
+        # Get chat history
+        chat_history = state.get("chat_history", [])
         # Get formatted prompt
-        prompt = get_qa_agent_prompt(state["message"], inventory_str)
+        prompt = get_qa_agent_prompt(state["message"], inventory_str, chat_history)
         
         # Create LLM
         # llm = get_llm(temperature=0.2)  # Slightly higher temperature for more natural responses
@@ -145,9 +148,11 @@ def run_upsert_agent(state: AgentState) -> AgentState:
     try:
         # Format inventory data as string
         inventory_str = format_inventory_as_string(state["inventory_data"])
+        # Get chat history
+        chat_history = state.get("chat_history", [])
         
         # Get formatted prompt
-        prompt = get_upsert_agent_prompt(state["message"], inventory_str)
+        prompt = get_upsert_agent_prompt(state["message"], inventory_str, chat_history)
         
         # Create LLM
         llm = get_llm()
@@ -189,9 +194,11 @@ def run_delete_agent(state: AgentState) -> AgentState:
     try:
         # Format inventory data as string
         inventory_str = format_inventory_as_string(state["inventory_data"])
+        # Get chat history
+        chat_history = state.get("chat_history", [])
         
         # Get formatted prompt
-        prompt = get_delete_agent_prompt(state["message"], inventory_str)
+        prompt = get_delete_agent_prompt(state["message"], inventory_str, chat_history)
         
         # Create LLM
         llm = get_llm()

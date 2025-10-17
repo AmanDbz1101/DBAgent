@@ -3,13 +3,11 @@ This module contains the workflow graph definition for the inventory management 
 """
 
 from langgraph.graph import StateGraph, END, START
-from typing import Any, Dict, Optional, List, Callable, Literal, Union, TypedDict, Annotated
+from typing import Any, Dict, Optional, List, Literal, TypedDict
 from typing_extensions import NotRequired
-from langchain_groq import ChatGroq
-
+from langgraph.checkpoint.memory import InMemorySaver
 
 from pydantic import BaseModel, Field
-from langchain.schema import SystemMessage, HumanMessage
 
 # Model definitions
 class TaskClassifier(BaseModel):
@@ -29,6 +27,9 @@ class UpsertState(BaseModel):
     quantity: int = Field(..., description="Quantity of the inventory item")
     description: Optional[str] = Field(None, description="Description of the inventory item")
     
+# class UpsertListItem(BaseModel):
+#     items: List[UpsertState] = Field(..., description="List of items to add or update")
+  
 # class UpsertState(BaseModel):
 #     items: List[UpsertItem] = Field(..., description="List of items to add or update")
 #     operation_type: Optional[str] = Field("upsert", description="Operation type: 'insert' for new items, 'update' for existing items, or 'upsert' for either")
@@ -42,6 +43,7 @@ class WorkflowState(TypedDict):
     """The schema for the workflow state."""
     message: str
     inventory_data: List[Dict[str, Any]]
+    chat_history: NotRequired[Optional[List[Dict[str, str]]]]
     task: NotRequired[Optional[str]]
     task_classifier: NotRequired[Optional[TaskClassifier]]
     upsert_data: NotRequired[Optional[UpsertState]]
@@ -155,5 +157,6 @@ def build_workflow_graph(
     workflow.add_edge("run_delete_agent", END)
     workflow.add_edge("handle_error", END)
     
+    checkpointer = InMemorySaver()
     # Compile the graph
-    return workflow.compile()
+    return workflow.compile(checkpointer=checkpointer)
