@@ -19,6 +19,15 @@ from agent import (
 )
 from graph import build_workflow_graph
 from tools import extract_inventory_data
+from auth import (
+    check_authentication,
+    login_user,
+    logout_user,
+    get_current_user,
+    initialize_auth_session,
+    login_as_guest,
+    is_guest_user
+)
 
 # Page configuration
 st.set_page_config(
@@ -28,11 +37,140 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+def show_login_page():
+    """Display the login page for user authentication."""
+    st.title("🔐 Inventory Management System")
+    st.markdown("### Please sign in to access your inventory")
+    
+    # Center the login form
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        with st.container():
+            st.markdown("---")
+            
+
+            
+            # Guest account section
+            st.markdown("### 👤 Demo Access")
+            st.markdown("Try the system without creating an account:")
+            
+            col_guest1, col_guest2, col_guest3 = st.columns([1, 2, 1])
+            with col_guest2:
+                if st.button(
+                    "🎯 Continue as Guest",
+                    use_container_width=True,
+                    type="secondary",
+                    help="Access demo inventory with limited permissions"
+                ):
+                    with st.spinner("Setting up guest session..."):
+                        success, message = login_as_guest()
+                        if success:
+                            st.success(f"✅ {message}")
+                            st.info("🔍 You're now accessing the Guest inventory table")
+                            st.rerun()
+                        else:
+                            st.error(f"❌ {message}")
+                            
+                            
+            st.markdown("---")
+            
+                        # Login form
+            with st.form("login_form", clear_on_submit=False):
+                st.subheader("Sign In")
+                
+                email = st.text_input(
+                    "📧 Email Address",
+                    placeholder="Enter your email address",
+                    help="Use the email address you registered with"
+                )
+                
+                password = st.text_input(
+                    "🔒 Password",
+                    type="password",
+                    placeholder="Enter your password",
+                    help="Enter your account password"
+                )
+                
+                col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
+                with col_btn2:
+                    submit_button = st.form_submit_button(
+                        "🚀 Sign In",
+                        use_container_width=True,
+                        type="primary"
+                    )
+                
+                if submit_button:
+                    if not email or not password:
+                        st.error("⚠️ Please enter both email and password")
+                    else:
+                        with st.spinner("Authenticating..."):
+                            success, message = login_user(email, password)
+                            
+                            if success:
+                                st.success(f"✅ {message}")
+                                st.balloons()
+                                st.rerun()
+                            else:
+                                st.error(f"❌ {message}")
+  
+
+def get_welcome_message() -> str:
+    """Get a context-aware welcome message based on user type."""
+    if is_guest_user():
+        return """Hello! I'm your inventory management assistant. You're currently using **Guest Mode** with access to demo data. 
+
+You can ask me to:
+- Show items in the guest inventory
+- Add new demo items
+- Update quantities
+- Delete items from the demo inventory
+
+This is a safe environment to test all features! How can I help you today?"""
+    else:
+        return """Hello! I'm your inventory management assistant. You have **authenticated access** to your personal inventory.
+
+You can ask me to:
+- Show items in your inventory
+- Add new items
+- Update quantities
+- Delete items from your inventory
+
+How can I help you today?"""
+
+def show_user_info_sidebar():
+    """Display user information in the sidebar."""
+    user = get_current_user()
+    if user:
+        st.sidebar.markdown("### 👤 User Info")
+        
+        # Show different info for guest vs authenticated users
+        if is_guest_user():
+            st.sidebar.markdown("**Mode:** 🎯 Guest Access")
+            st.sidebar.markdown("**Table:** Guest (Demo Data)")
+            st.sidebar.info("🔍 You're using demo data. Switch to authenticated access for personal inventory.")
+        else:
+            st.sidebar.markdown(f"**Email:** {user.get('email', 'Unknown')}")
+            st.sidebar.markdown("**Table:** Inventory (Personal)")
+            st.sidebar.success("🔐 Authenticated Access")
+        
+        if st.sidebar.button("🚪 Logout", use_container_width=True):
+            success, message = logout_user()
+            if success:
+                st.success(f"✅ {message}")
+                st.rerun()
+            else:
+                st.error(f"❌ {message}")
+        
+        st.sidebar.markdown("---")
+
 def initialize_session_state():
     """Initialize session state variables."""
     if "messages" not in st.session_state:
+        # Create context-aware welcome message
+        welcome_message = "Hello! You are using Guest access to the inventory management system." if is_guest_user() else "Hello! I'm your inventory management assistant. How can I help you today?"
         st.session_state.messages = [
-            {"role": "assistant", "content": "Hello! I'm your inventory management assistant. You can ask me to show items, add new items, update quantities, or delete items from your inventory. How can I help you today?"}
+            {"role": "assistant", "content": welcome_message}
         ]
     
     if "workflow" not in st.session_state:
@@ -114,17 +252,24 @@ def process_user_message(user_input: str) -> Dict[str, Any]:
             "response": f"Sorry, I encountered an error: {str(e)}"
         }
 
-def main():
-    """Main Streamlit application."""
+def inventory_main():
+    """Main inventory management interface (protected)."""
     # Initialize session state
     initialize_session_state()
     
-    # Header
-    st.title("📦 Inventory Management System")
-    st.markdown("Ask me anything about your inventory! I can help you view, add, update, or delete items.")
+    # Header with mode indicator
+    if is_guest_user():
+        st.title("📦 Inventory Management System (Guest Mode)")
+        st.markdown("🎯 You're using **demo data** - perfect for testing! Ask me anything about the guest inventory.")
+        st.info("💡 **Tip:** All operations work the same as the full version, but you're working with sample data.")
+    else:
+        st.title("📦 Inventory Management System")
+        st.markdown("🔐 **Authenticated Access** - Ask me anything about your personal inventory! I can help you view, add, update, or delete items.")
     
     # Sidebar for inventory display
     with st.sidebar:
+        # Show user info at top of sidebar
+        show_user_info_sidebar()
         st.header("� Current Inventory")
         
         # Refresh button
@@ -212,6 +357,19 @@ def main():
                     error_msg = "Sorry, I couldn't generate a response. Please try again."
                     st.markdown(error_msg)
                     st.session_state.messages.append({"role": "assistant", "content": error_msg})
+
+def main():
+    """Main application entry point with authentication."""
+    # Initialize authentication session
+    initialize_auth_session()
+    
+    # Check if user is authenticated
+    if check_authentication():
+        # Show the main inventory interface
+        inventory_main()
+    else:
+        # Show login page
+        show_login_page()
 
 if __name__ == "__main__":
     main()

@@ -19,6 +19,16 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # Constants
 DB_TABLE_NAME = "Inventory"
 
+def get_table_name() -> str:
+    """Get the appropriate table name based on user type."""
+    try:
+        # Import here to avoid circular imports
+        from auth import get_user_table_name
+        return get_user_table_name()
+    except ImportError:
+        # Fallback to default table if auth module not available
+        return DB_TABLE_NAME
+
 # Tool input/output models
 class UpsertInput(BaseModel):
     item_name: str = Field(..., description="Name of the inventory item")
@@ -41,7 +51,8 @@ def extract_inventory_data() -> List[Dict[str, Any]]:
     Returns:
         List of inventory items as dictionaries
     """
-    response = supabase.table(DB_TABLE_NAME).select("*").execute()
+    table_name = get_table_name()
+    response = supabase.table(table_name).select("*").execute()
     if response and hasattr(response, 'data'):
         return response.data
     return []
@@ -69,7 +80,7 @@ def fetch_all_inventory() -> InventoryResponse:
 
 def upsert_inventory_item(input_data: UpsertInput) -> InventoryResponse:
     """
-    Add or update an item in the inventory.
+    Add or update an inventory item in the database.
     
     Args:
         input_data: UpsertInput containing item details
@@ -78,66 +89,81 @@ def upsert_inventory_item(input_data: UpsertInput) -> InventoryResponse:
         InventoryResponse with success status and message
     """
     try:
+        table_name = get_table_name()
+        
+        # Prepare item data
         item_data = {
             "item_name": input_data.item_name,
-            "quantity": input_data.quantity
+            "quantity": input_data.quantity,
+            "description": input_data.description
         }
         
-        if input_data.description:
-            item_data["description"] = input_data.description
-            
-        # Check if item exists
-        # existing = supabase.table(DB_TABLE_NAME).select("*").eq("item_name", input_data.item_name).execute()
+        # Check if item exists (commented out for now - upsert handles this)
+        # existing = supabase.table(table_name).select("*").eq("item_name", input_data.item_name).execute()
         
-        response = supabase.table(DB_TABLE_NAME).upsert(item_data).execute()
+        response = supabase.table(table_name).upsert(item_data).execute()
         
-        # action = "updated" if existing and existing.data else "added"
-        
-        return InventoryResponse(
-            success=True,
-            message="Done",
-            data=response.data if hasattr(response, 'data') else None
-        )
+        if response and hasattr(response, 'data') and response.data:
+            return InventoryResponse(
+                success=True,
+                message=f"Successfully upserted item '{input_data.item_name}' with quantity {input_data.quantity}",
+                data=response.data
+            )
+        else:
+            return InventoryResponse(
+                success=False,
+                message="Failed to upsert item - no data returned",
+                data=[]
+            )
     except Exception as e:
         return InventoryResponse(
             success=False,
-            message=f"Error upserting inventory item: {str(e)}",
-            data=None
+            message=f"Error upserting item: {str(e)}",
+            data=[]
         )
 
 def delete_inventory_item(input_data: DeleteInput) -> InventoryResponse:
     """
-    Delete an item from the inventory.
+    Delete an inventory item from the database.
     
     Args:
-        input_data: DeleteInput containing item name
+        input_data: DeleteInput containing item name to delete
         
     Returns:
         InventoryResponse with success status and message
     """
     try:
-        # Check if item exists
-        existing = supabase.table(DB_TABLE_NAME).select("*").eq("item_name", input_data.item_name).execute()
+        table_name = get_table_name()
         
-        if not existing or not existing.data:
+        # Check if item exists first
+        existing = supabase.table(table_name).select("*").eq("item_name", input_data.item_name).execute()
+        
+        if not existing.data:
             return InventoryResponse(
                 success=False,
                 message=f"Item '{input_data.item_name}' not found in inventory",
-                data=None
+                data=[]
             )
         
-        response = supabase.table(DB_TABLE_NAME).delete().eq("item_name", input_data.item_name).execute()
+        response = supabase.table(table_name).delete().eq("item_name", input_data.item_name).execute()
         
-        return InventoryResponse(
-            success=True,
-            message=f"Successfully deleted item '{input_data.item_name}' from inventory",
-            data=response.data if hasattr(response, 'data') else None
-        )
+        if response:
+            return InventoryResponse(
+                success=True,
+                message=f"Successfully deleted item '{input_data.item_name}' from inventory",
+                data=[]
+            )
+        else:
+            return InventoryResponse(
+                success=False,
+                message=f"Failed to delete item '{input_data.item_name}'",
+                data=[]
+            )
     except Exception as e:
         return InventoryResponse(
             success=False,
-            message=f"Error deleting inventory item: {str(e)}",
-            data=None
+            message=f"Error deleting item: {str(e)}",
+            data=[]
         )
 
 

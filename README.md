@@ -4,6 +4,8 @@ A sophisticated inventory management system featuring AI agents powered by LangG
 
 ## 🌟 Current Features
 
+- 🔐 **Dual Access Modes**: Secure authentication for personal use + instant guest access for demos
+- 🎯 **Guest Demo Mode**: No-signup required access with sample data for testing and evaluation
 - 🤖 **AI Agent Workflow**: LangGraph-powered multi-agent system with task classification and specialized agents
 - 📦 **Smart Inventory Operations**: Natural language processing for add/update/delete/query operations
 - 💬 **Interactive Chat Interface**: Modern Streamlit web UI with real-time chat functionality
@@ -47,7 +49,9 @@ LANGCHAIN_PROJECT=DBAgent
 - The LangSmith configuration is optional but highly recommended for development and debugging
 
 ### 3. Database Setup
-Make sure your Supabase database has an "Inventory" table with the following schema:
+Make sure your Supabase database has both the "Inventory" and "Guest" tables:
+
+**Main Inventory Table:**
 ```sql
 CREATE TABLE public."Inventory" (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
@@ -59,7 +63,43 @@ CREATE TABLE public."Inventory" (
 ) TABLESPACE pg_default;
 ```
 
-### 4. LangSmith Setup (Optional)
+**Guest Demo Table:**
+```sql
+CREATE TABLE public."Guest" (
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  item_name TEXT NOT NULL,
+  quantity BIGINT NULL,
+  description TEXT NULL,
+  CONSTRAINT Guest_pkey PRIMARY KEY (item_name),
+  CONSTRAINT Guest_item_name_key UNIQUE (item_name)
+) TABLESPACE pg_default;
+```
+
+**Optional: Add sample data to Guest table:**
+```sql
+INSERT INTO public."Guest" (item_name, quantity, description) VALUES
+('Demo Laptop', 5, 'Sample laptop for testing'),
+('Demo Mouse', 20, 'Wireless mouse demo item'),
+('Demo Keyboard', 15, 'Mechanical keyboard sample'),
+('Demo Monitor', 8, '24-inch display demo');
+```
+
+### 4. User Authentication Setup
+The system uses Supabase Authentication for secure access:
+
+1. **Create User Account in Supabase**:
+   - Go to your Supabase project dashboard
+   - Navigate to Authentication > Users
+   - Click "Add user" or "Invite user"
+   - Enter email and password for the user account
+   - Ensure the user is confirmed/active
+
+2. **Authentication Configuration**:
+   - The same `SUPABASE_URL` and `SUPABASE_KEY` are used for authentication
+   - No additional configuration required in `.env`
+   - Authentication is handled through Supabase Auth API
+
+### 5. LangSmith Setup (Optional)
 LangSmith was integrated to solve workflow debugging issues and optimize agent performance:
 - Sign up at [LangSmith](https://smith.langchain.com/)
 - Create a new project named "DBAgent" (or update `LANGCHAIN_PROJECT` in `.env`)
@@ -82,10 +122,23 @@ LangSmith was integrated to solve workflow debugging issues and optimize agent p
 2. **Access the Interface**
    Open your browser and navigate to `http://localhost:8501`
 
-3. **Interact with the AI Assistant**
+3. **Choose Access Mode**
+   **Authenticated Access:**
+   - Enter your email and password on the login page
+   - Use the credentials you set up in Supabase Authentication
+   - Click "Sign In" to access your personal inventory system
+   
+   **Guest Access:**
+   - Click "Continue as Guest" for instant demo access
+   - No account required - uses sample data
+   - Full functionality for testing and evaluation
+
+4. **Interact with the AI Assistant**
    - Type natural language queries in the chat interface
    - View real-time inventory updates in the sidebar
    - Monitor agent workflows through LangSmith (if configured)
+   - Guest users work with demo data, authenticated users with personal inventory
+   - Use the logout button in the sidebar when done
 
 ### Command Line Interface
 
@@ -141,10 +194,11 @@ LangSmith was integrated to solve workflow debugging issues and optimize agent p
 ## 🏗️ Technical Architecture
 
 ### Core Components
+- **Authentication System**: Supabase Auth integration with secure session management
 - **LangGraph Workflow Engine**: Orchestrates multi-agent collaboration with state management
 - **Specialized AI Agents**: Task classifier, QA agent, upsert agent, and delete agent
-- **Supabase Integration**: PostgreSQL database with real-time capabilities
-- **Streamlit Frontend**: Modern web interface with chat functionality
+- **Supabase Integration**: PostgreSQL database with real-time capabilities and user authentication
+- **Streamlit Frontend**: Modern web interface with authentication flow and chat functionality
 - **LangSmith Monitoring**: Comprehensive workflow tracing and debugging
 
 ### Agent Workflow System
@@ -187,6 +241,7 @@ history = workflow.get_state_history(config, limit=5)
 DBAgent/
 ├── agent.py              # Core agent logic and state management
 ├── app.py                # Streamlit web interface (main entry point)
+├── auth.py               # Authentication functions and user management
 ├── graph.py              # LangGraph workflow definition and orchestration
 ├── tools.py              # Database interaction tools and utilities
 ├── prompt.py             # AI prompt templates and engineering
@@ -196,7 +251,8 @@ DBAgent/
 ```
 
 ### Key Files Explained
-- **`app.py`**: Main Streamlit application with chat interface and real-time inventory display
+- **`app.py`**: Main Streamlit application with authentication flow and chat interface
+- **`auth.py`**: Authentication module handling Supabase Auth integration and session management
 - **`agent.py`**: Contains all agent implementations and state management logic
 - **`graph.py`**: Defines the LangGraph workflow that orchestrates agent interactions
 - **`tools.py`**: Database operations and Supabase integration functions
@@ -206,12 +262,18 @@ DBAgent/
 
 ### Common Issues & Solutions
 
-1. **Environment Variable Errors**
+1. **Authentication Issues**
+   - **Login Failed**: Verify email and password are correct in Supabase Auth dashboard
+   - **User Not Found**: Ensure user account exists and is confirmed in Supabase
+   - **Session Expired**: Logout and login again to refresh authentication
+   - **Email Not Confirmed**: Check if user account needs email verification
+
+2. **Environment Variable Errors**
    - Verify `.env` file exists and contains all required variables
    - Check API key validity and ensure no extra spaces/characters
    - Restart the application after updating environment variables
 
-2. **Database Connection Issues**
+3. **Database Connection Issues**
    - Verify Supabase URL and key are correct in `.env`
    - Ensure Supabase project is active and accessible
    - Check that the "Inventory" table exists with the correct schema
@@ -284,6 +346,12 @@ This project is for educational and development purposes.
 
 ## 🔄 Recent Updates
 
+- ✅ **Guest Account Feature**: Added instant demo access with "Continue as Guest" button
+- ✅ **Dual Database Support**: Automatic table switching between "Inventory" (auth) and "Guest" (demo)
+- ✅ **Context-Aware Interface**: UI adapts to show current access mode and appropriate guidance
+- ✅ **User Authentication System**: Integrated Supabase Auth with secure email/password login
+- ✅ **Protected Access**: Personal inventory requires authentication, guest access for demos
+- ✅ **Session Management**: Secure session handling with logout functionality
 - ✅ **Conversational Memory Implementation**: Added persistent context awareness using LangGraph's `get_state_history()`
 - ✅ **Enhanced Agent Context**: All agents now receive and process up to 5 previous chat interactions
 - ✅ **Natural Reference Resolution**: Agents understand ambiguous references from conversation history
@@ -293,4 +361,4 @@ This project is for educational and development purposes.
 - ✅ **Advanced Error Handling**: Sophisticated error management and user feedback systems
 - ✅ **Prompt Optimization**: Iterative improvements through LangSmith analytics
 
-**Note**: The memory persistence implementation enables truly conversational interactions, allowing users to have natural follow-up conversations without repeating context. LangSmith integration was crucial for debugging the agent workflows and optimizing the contextual prompt engineering.
+**Note**: The authentication system ensures secure access to the inventory database, while the memory persistence implementation enables truly conversational interactions. Users can now have natural follow-up conversations without repeating context, all within a secure, authenticated environment.
